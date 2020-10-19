@@ -1,0 +1,77 @@
+
+# Compile bivariate data, plus additional variable
+x <- MASS::Boston[, c(1, 4, 7, 6)] # , 3, 5, 8
+
+
+x_type <- apply(x, 2,
+                function(z) switch (1 + (length(unique(z)) > 2),
+                                    "d",
+                                    "c"))
+
+#y <- 1*(MASS::Boston[, 14] > 25.75)
+y <- MASS::Boston[, 14]
+y_type <- "c"
+
+train <- sample(c(T, F), length(y), T, c(0.7, 0.3))
+
+
+fit <- copulareg::copulareg(y[train], x[train, ], y_type, x_type, extra_x = x[!train, ])
+
+tr_pred <- copulareg::predict.copulareg(fit)
+te_pred <- copulareg::predict.copulareg(fit, newdata = x[!train, ])
+
+lin <- lm(y[train]~., data=x[train, ])
+tr_pred_lm <- predict(lin)
+te_pred_lm <- predict(lin, newdata=x[!train, ])
+
+par(mfrow=c(2, 2))
+plot(y[train] - tr_pred[, 1], col=2, ylab="Residuals ",
+     main=paste0(c("Fitted values, copulareg,\n",
+                   "(MSE=", round(mean((y[train] - tr_pred)**2), 2), ")"),
+                 collapse=""))
+plot(y[!train] - te_pred, col=5, ylab="Prediction error",
+     main=paste0(c("Prediced values, copulareg,\n",
+                   "(MSE=", round(mean((y[!train] - te_pred)**2), 2), ")"),
+                 collapse=""))
+plot(y[train] - tr_pred_lm, col=2, ylab="Residuals ",
+     main=paste0(c("Fitted values, lm,\n",
+                   "(MSE=", round(mean((y[train] - tr_pred_lm)**2), 2), ")"),
+                 collapse=""))
+plot(y[!train] - te_pred_lm, col=5,  ylab="Prediction error",
+     main=paste0(c("Prediced values, lm,\n",
+                   "(MSE=", round(mean((y[!train] - te_pred_lm)**2), 2), ")"),
+                 collapse=""))
+
+
+# Discrete
+
+y_discrete <- 1*(MASS::Boston[, 14] > 25.75)
+
+
+fit_discrete <- copulareg::copulareg(y_discrete[train], x[train, ], "d",
+                                     x_type, extra_x = x[!train, ])
+
+tr_pred_discr <- copulareg::predict.copulareg(fit_discrete)
+te_pred_discr <- copulareg::predict.copulareg(fit_discrete, newdata = x[!train, ])
+
+genlin <- glm(y_discrete[train]~., data=x[train, ], family = "binomial")
+tr_pred_genlm <- predict(genlin, type = "response")
+te_pred_genlm <- predict(genlin, newdata=x[!train, ], type="response")
+
+par(mfrow=c(2, 2))
+plot(tr_pred_discr[, 1], col=y_discrete[train] + 2, ylab="Residuals ",
+     main=paste0(c("Fitted values, copulareg,\n",
+                   "(Brier=", round(mean((y_discrete[train] - tr_pred_discr)**2), 4), ")"),
+                 collapse=""))
+plot(te_pred_discr, col=2*y_discrete[!train] + 2, ylab="Prediction error",
+     main=paste0(c("Prediced values, copulareg,\n",
+                   "(Brier=", round(mean((y_discrete[!train] - te_pred_discr)**2), 4), ")"),
+                 collapse=""))
+plot(tr_pred_genlm, col=y_discrete[train] + 2, ylab="Residuals ",
+     main=paste0(c("Fitted values, lm,\n",
+                   "(Brier=", round(mean((y_discrete[train] - tr_pred_genlm)**2), 4), ")"),
+                 collapse=""))
+plot(te_pred_genlm, col=2*y_discrete[!train] + 2,  ylab="Prediction error",
+     main=paste0(c("Prediced values, lm,\n",
+                   "(Brier=", round(mean((y_discrete[!train] - te_pred_genlm)**2), 4), ")"),
+                 collapse=""))

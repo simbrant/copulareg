@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1603119277653.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1304573954",
+    "id" : "D52EA482",
+    "lastKnownWriteTime" : 1601976041,
+    "last_content_update" : 1601976041,
+    "path" : "~/MiscPhD/Implementations/FitCopula/test_script.R",
+    "project_path" : null,
+    "properties" : {
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

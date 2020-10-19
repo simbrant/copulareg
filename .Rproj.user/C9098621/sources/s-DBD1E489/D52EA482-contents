@@ -1,0 +1,211 @@
+
+# Load software
+source("~/MiscPhD/Implementations/FitCopula/fit_model_xy.R")
+
+# Load dataset
+
+dset <- MASS::Boston
+
+# Select some of the columns of the dataset, and create a discrete response
+# by transforming the median value of the properties
+y <- dset$medv >= 26
+x <- cbind(dset$crim, dset$zn, dset$indus, dset$chas, dset$nox, dset$rm,
+           dset$age, dset$dis, dset$tax, dset$lstat)
+xtyp <- rep("c", ncol(x))
+xtyp[4] <- "d"
+
+#RVineStructure::compute_min_array() const
+#{
+#  TriangularArray<size_t> min_array = struct_array_;
+#  for (size_t j = 0; j < d_ - 1; j++) {
+#    for (size_t i = 1; i < std::min(d_ - 1 - j, trunc_lvl_); i++) {
+#      min_array(i, j) = std::min(struct_array_(i, j), min_array(i - 1, j));
+#    }
+#  }
+#  
+#  return min_array;
+#}
+
+tmp_mat_2 <- tmp_mat[(4:1), ]
+min_arr <- tmp_mat_2
+for (t_j in 0:(ncol(tmp_mat_2)-2)){
+  for (t_i in 1:(ncol(tmp_mat_2) - t_j - 2)){
+    print(tmp_mat_2[t_i+1, t_j+1])
+    print()
+    min_arr[t_i, t_j] <- min(tmp_mat_2[t_i+1, t_j+1], min_arr[t_i -1 +1 , t_j+1])
+  }
+}
+
+
+x_cols <- 1:3
+md_ <- fit.model.xy(y, x[, x_cols], "d", xtyp[x_cols])
+md_
+md_incomplete <- fit_model_xy(y, as.matrix(x[, x_cols]), "d", xtyp[x_cols])
+
+
+
+x <- x[, 1:4]
+xtyp <- xtyp[1:4]
+U <- compute_distrbs(cbind(x, y), var_types_x = c(xtyp, "d"))$transform(cbind(x, y), c(xtyp, "d"))
+
+md_x <- rvinecopulib::vinecop(U[, c(1:4, 6)], var_types = xtyp,
+                              family_set = c("gaussian", "clayton", "gumbel"))
+
+bicop_2_hbicop <- function(u, bicop_obj, inverse=FALSE, cond_var=2)
+
+mat <- rvinecopulib::as_rvine_matrix(md_x$structure)[rev(seq(ncol(x))), ]
+
+helper <- function(i, j){
+  U_ <- U[, c(i, j)]
+  if (xtyp[i] == "d"){
+    U_ <- cbind(U_, U[, length(xtyp) + sum(xtyp[seq(i)] == "d")])
+  }
+  if (xtyp[j] == "d"){
+    U_ <- cbind(U_, U[, length(xtyp) + sum(xtyp[seq(j)] == "d")])
+  } 
+  U_
+}
+
+helper(mat[3, 3], mat[4, 3])
+xtyp
+mat[1, 1]
+mat[4, 1]
+
+U2 <- cbind(sapply(1:3, function(l) bicop_2_hbicop(helper(mat[l, l], mat[nrow(mat), l]), md_x$pair_copulas[[1]][[l]])),
+            sapply(1:3, function(l) bicop_2_hbicop(helper(mat[l, l], mat[nrow(mat), l]), md_x$pair_copulas[[1]][[l]],
+                                                   cond_var = 1)))
+
+bicop_2_hbicop(helper(mat[l, l], mat[nrow(mat), l]), md_x$pair_copulas[[1]][[l]])
+bicop_2_hbicop(helper(mat[1, 1], mat[nrow(mat), 1]), md_x$pair_copulas[[1]][[1]], cond_var = 2)
+
+md_x$structure
+
+if (any(xtyp=="d")){
+  U1 <- U[, c(1:ncol(x), seq(ncol(x) + 1 + 1, ncol(x) + 1 + sum(xtyp=="d")))]
+} else{
+  U1 <- U[, 1:ncol(x)]
+}
+
+md_x <- rvinecopulib::vinecop(U1, var_types = xtyp, family_set = c("gaussian", "clayton", "gumbel"))
+
+
+
+
+marginal <- compute_distrbs(X, distribution_types)
+marginal$transform(X, distribution_types)
+U_est <- marginal$transform(X, distribution_types)
+mx <- rvinecopulib::vinecop(U_est, distribution_types, c("gaussian", "clayton", "gumbel"))
+
+mx$pair_copulas
+
+
+transform_first_layer <- function(U, model, var_types){
+  
+  
+  
+}
+
+mx$structure
+
+j <- 1
+i <- 1
+t <- 1
+
+
+
+transform_first_layer <- function(U, model){
+  
+  transform_var_i <- function(i, U, model){
+
+    col1 <- model$struct$ord[i]
+    col2 <- model$struct$ord[model$struct$struct[[1]][i]]
+    
+    if (any(model$var_types[c(col1, col2)] == "d")){
+
+      which_disc <- c(col1, col2)[c(model$var_types[col1],
+                                    model$var_types[col2]) == "d"]
+      extra_cols <- model$struct$d + cumsum(model$var_types=="d")[which_disc]
+      transf <- cbind(bicop_2_hbicop(U[, c(col1, col2, extra_cols)],
+                                     bicop_obj = model$pair_copulas[[1]][[i]]),
+                      bicop_2_hbicop(U[, c(col1, col2, extra_cols)],
+                                     bicop_obj = model$pair_copulas[[1]][[i]],
+                                     cond_var = 2))
+    } else {
+      transf <- cbind(bicop_2_hbicop(U[, c(col1, col2)],
+                                     bicop_obj = model$pair_copulas[[1]][[i]]),
+                      bicop_2_hbicop(U[, c(col1, col2)],
+                                     bicop_obj = model$pair_copulas[[1]][[i]],
+                                     cond_var = 2))
+    }
+
+    transf
+
+  }
+  
+  vapply(1:(model$struct$d - 1), transform_var_i, U=U, model=model,
+         FUN.VALUE = matrix(0, nrow=nrow(U), ncol=2))
+  
+}
+
+?rvinecopulib::hbicop()
+mx$structure
+mx$structure$struct_array
+mx$structure$order
+
+first_layer <- transform_first_layer(U_est, mx)
+
+MASS::Boston[, c(1, 4)]
+
+
+
+
+transform_second_layer <- function(U, model){
+  
+  transform_variable_i <- function(i, U, model){
+    
+    U1 <- 
+    
+  }
+  
+  
+  
+}
+
+# Lookup table to find the second argument (the first argument is always
+# in the same position)
+
+lookup <- cbind(mx$structure$order[1:(mx$structure$d - 1)], 
+                mx$structure$order[mx$structure$struct_array[[1]]])
+
+varpair <- c(mx$structure$order[mx$structure$struct_array[[2]][2]],
+             mx$structure$order[mx$structure$struct_array[[1]][2]])
+
+# Check if pair are in the reverse order in terms of which is the
+# conditioned and conditioning variable
+if (any(apply(lookup, 1, function(x) all(x == rev(varpair))))){
+  rever = TRUE
+}
+
+# find the variable pair index in the first layer
+var_index <- which(apply(lookup, 1, function(x) all(x == varpair) | 
+                           all(x == rev(varpair))))
+
+first_layer[, 1 + rever, var_index]
+
+col1 <- mx$struct$ord[i]
+col2 <- mx$struct$ord[mx$struct$struct[[t]][i]]
+
+if (any(c(distribution_types[c(col1, col2)] == "d"))){
+  
+  which_disc <- c(col1, col2)[c(distribution_types[col1],
+                                distribution_types[col2]) == "d"]
+  extra_cols <- mx$struct$d + cumsum(distribution_types=="d")[which_disc]
+  transf <- bicop_2_hbicop(U[, c(col1, col2, extra_cols)],
+                           bicop_obj = mx$pair_copulas[[t]][[i]])
+} else {
+  transf <- bicop_2_hbicop(U[, c(mx$struct$ord[i],
+                                 mx$struct$ord[mx$struct$struct[[t]][i]])],
+                           bicop_obj = mx$pair_copulas[[t]][[i]])
+}
+dim(X)
+

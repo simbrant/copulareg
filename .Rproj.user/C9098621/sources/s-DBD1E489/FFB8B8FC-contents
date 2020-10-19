@@ -1,0 +1,146 @@
+
+
+
+
+y_triple
+u_y <- distr_y_triple$transform(sort(unique(y_triple)), "d")[, 1]
+vmt <- rvinecopulib::as_rvine_matrix(mod$model$structure)
+vmt <- vmt[rev(seq(nrow(vmt))), ]
+
+
+d <- ncol(x)
+n <- nrow(x)
+u.x.tmp <- compute.cond.y.prep.int(x, vmt, mod$model$pair_copulas, F.all(x, x_type)$F.x, x_type)
+y.val <- mod$y
+u.y <- distr_y$transform(y.val, "d")
+
+u.y.tmp <- compute.u.y(rep(u_y[-length(u_y)], each=nrow(u.x.tmp)),
+                       matrix(rep(t(u.x.tmp), length(u.y) - 1),
+                              ncol = ncol(u.x.tmp), byrow = TRUE),
+                       vmt,mod$model$pair_copulas, x_type)[,d]
+
+p.y.cond.tmp <- matrix(h.func(u.y.tmp,rep(u.x.tmp[,2*d-1],length(u.y)-1), 2,
+                              mod$model$pair_copulas[[d]][[1]]$family, 
+                              mod$model$pair_copulas[[d]][[1]]$rotation,
+                              mod$model$pair_copulas[[d]][[1]]$par, 
+                              var.type=x_type[vmt[2,1]], 
+                              u.minus=rep(u.x.tmp[,2*d],length(u.y)-1)), 
+                       nrow=n)
+
+p.y.cond.tmp <- cbind(p.y.cond.tmp,rep(1,n))
+p.y.cond <- p.y.cond.tmp
+p.y.cond[,2:length(u.y)] <- t(apply(p.y.cond.tmp,1,diff))
+E.y.cond <- apply(t(t(p.y.cond)*y.val),1,sum)
+
+
+# Ingr
+
+source("../../../Article2/26.06.20/CopulaInt/ComputeCond.R")
+#source("../../../Article2/26.06.20/CopulaInt/FitModelXY.R")
+source("../../../Article2/26.06.20/CopulaInt/TransformMargins.R")
+
+
+fx <- F.all(x, var.types.x = x_type)
+fy <- F.all(as.matrix(y), y_type)
+list(F.u.y$F.x[[1]],y)
+
+mat <- rvinecopulib::as_rvine_matrix(model$structure)
+sort(fy[[2]][[1]])
+
+
+plot(
+compute.cond.discr.y(x, mat[rev(seq(nrow(mat))), ], model$pair_copulas, fx$F.x,
+                     list(fy$F.x[[1]], y), x_type),
+col=y+3)
+
+source("~/MiscPhD/Implementations/FitCopula/fit_model_xy.R")
+
+# Compile bivariate data, plus additional variable
+x <- MASS::Boston[, c(1, 4, 7, 6)] # , 3, 5, 8
+
+
+x_type <- apply(x, 2, 
+                function(z) switch (1 + (length(unique(z)) > 2),
+                                    "d",
+                                    "c"))
+p <- ncol(x)
+
+y <- 1*(MASS::Boston[, 14] > 25)
+y_type <- "d"
+
+y <- MASS::Boston[, 14]
+y_type <- "c"
+train <- sample(c(T, F), length(y), T, c(.7, .3))
+
+mod <- fit_model_xy(y[train], x[train, ], y_type, x_type)
+distr_x <- compute_distrbs(x, x_type)
+distr_y <- compute_distrbs(y[train], y_type)
+
+quantile(distr_y$margins[[1]], c(0, 1))
+model <- mod$model
+# Extract x and y types from model
+y_type <- model$var_types[model$structure$d]
+x_type <- model$var_types[1:(model$structure$d - 1)]
+
+# Transform covariates
+u_x <- distr_x$transform(x, x_type)
+
+# Extract covariate model from model
+sub_mod <- mod$model
+sub_mod$structure <- rvinecopulib::as_rvine_structure(
+  rvinecopulib::as_rvine_matrix(sub_mod$structure)[1:(sub_mod$structure$d - 1),
+                                                   2:sub_mod$structure$d])
+sub_mod$pair_copulas <- lapply(1:(sub_mod$structure$d - 1),
+                               function(l) sub_mod$pair_copulas[[l]][
+                                 2:(sub_mod$structure$d- (l - 1))])
+sub_mod$var_types <- x_type
+
+# Compute all the conditionals of the covariate model for the 
+# data points where we want to compute the expectation
+cond_x <- compute_conditionals(u_x, sub_mod)
+
+
+
+yval <- sort(unique(mod$y))
+u_y <- distr_y$transform(yval, "d")
+
+uu <- cbind(sapply(1:(nrow(u_y) - 1),
+                   function(i) eval_at_u_y(matrix(rep(u_y[1, ], nrow(x)),
+                                                  ncol=ncol(u_y), byrow=T),
+                                           model, ncol(x), cond_x, y_type = "d")),
+            rep(1, ncol(x)))
+
+u_y <- u_y[-length(u_y)]
+n_test <- nrow(x)
+if (length(u_y) != n_test && length(u_y) == 1) {
+  u_y <- rep(u_y, n_test)
+} else if (!(length(u_y) == n_test & length(unique(u_y) == 1))) {
+  stop(paste(c("u_y must be a single number between 0 ",
+               "and 1, or a vector of n_test repetitions ",
+               "of the same number"), collapse = ""))  
+}
+
+vinemat <- rvinecopulib::as_rvine_matrix(model$structure)
+d <- model$structure$d
+h <- rep(0, n_test)
+
+u_ <- weave_transformed(matrix(rep(rev(u_y), 506), ncol=2, byrow=T),
+                        get(make_hfunc_key(vinemat[1, 1], c()),
+                            envir=cond_x))
+
+h <- bicop_2_hbicop(u_, mod$model$pair_copulas[[1]][[1]], return_u_minus = T)
+
+for (t in 2:(nrow(vinemat) - 1)){
+  u_ <- weave_transformed(
+    h, get(make_hfunc_key(vinemat[t, 1], vinemat[1:(t-1), 1]),
+           envir=cond_x))
+  
+  h <- bicop_2_hbicop(u_, mod$model$pair_copulas[[t]][[1]], return_u_minus = T)
+}
+h
+}
+
+h[, 1] - h[, 2]
+
+plot(-apply(h, 1, diff), col=y+3)
+y

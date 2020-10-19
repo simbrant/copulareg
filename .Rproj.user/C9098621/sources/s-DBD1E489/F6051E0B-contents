@@ -1,0 +1,234 @@
+
+
+source("~/MiscPhD/Implementations/FitCopula/fit_model_xy.R")
+
+# Compile bivariate data, plus additional variable
+x <- MASS::Boston[, c(1, 4, 7, 6)] # , 3, 5, 8
+
+
+x_type <- apply(x, 2, 
+                function(z) switch (1 + (length(unique(z)) > 2),
+                                    "d",
+                                    "c"))
+p <- ncol(x)
+
+y <- MASS::Boston[, 14]
+y_type <- "c"
+
+y_triple <- y
+y_triple[y < 20] <- mean(y[y < 20])
+y_triple[y >= 20 & y < 25.75] <- mean(y[y >= 20 & y < 25.75])
+y_triple[y >= 25.75] <- mean(y[y >= 25.75])
+y_triple_type <- "d"
+
+mod <- fit_model_xy(y_triple, x, y_triple_type, x_type)
+distr_y_triple <- compute_distrbs(y_triple, y_triple_type)
+distr_x <- compute_distrbs(x, x_type)
+distr_y_triple$transform(mod$y, "d")[, 1]
+uu <- compute_expectation(mod$model, x, distr_x, distr_y_triple, mod$y)
+
+apply(sapply(1:dim(uu)[3], function(k) apply(uu[, , k], 1, function(x) diff(rev(x)))), 1, sum)
+plot(sapply(1:dim(uu)[3], function(k) apply(uu[, , k], 1, function(x) diff(rev(x)))) %*% mod$y,
+     y_triple)
+
+
+cbind(uu[1:10, 2, 1],
+      uu[1:10, 2, 2],
+      uu[1:10, 1, 2])
+
+dim(uu)[3]
+
+uu[1:10, , 1]
+uu[1:10, , 2]
+
+compute_distrbs(x, x_type)
+compute_distrbs(y, y_type)
+
+compute_distrbs(cbind(x, y), c(x_type, y_type))
+compute_distrbs(y, y_type)
+
+compute_distrbs(cbind(x, y), c(x_type, y_type))
+
+compute_distrbs(cbind(x, y), c(x_type, y_type))$transform(cbind(x, y),
+                                                          c(x_type, y_type))
+mod$model <- rvinecopulib::vinecop(
+  compute_distrbs(cbind(x, y), c(x_type, y_type))$transform(cbind(x, y),
+                                                            c(x_type, y_type)),
+  c(x_type, y_type), family_set = c("gaussian", "gumbel", "clayton"),
+  structure = mod$model$structure)
+  
+sub_mod <- mod$model
+sub_mod$pair_copulas[[1]][2:4]
+
+sub_mod$structure <- rvinecopulib::as_rvine_structure(
+  rvinecopulib::as_rvine_matrix(sub_mod$structure)[1:(sub_mod$structure$d - 1),
+                                                   2:sub_mod$structure$d])
+
+sub_mod$pair_copulas <- lapply(1:(sub_mod$structure$d - 1),
+                               function(l) sub_mod$pair_copulas[[l]][
+                                 2:(sub_mod$structure$d- (l - 1))])
+
+
+sub_mod$var_types <- x_type
+sub_mod$var_types
+as_rvine_matrix(sub_mod$structure)
+x_distr <- compute_distrbs(x, x_type)
+u_x <- x_distr$transform(x, x_type)
+mod_x <- rvinecopulib::vinecop(u_x, var_types = x_type,
+                               family_set = c("gaussian", "gumbel", "clayton"))
+
+
+compute_distrbs(cbind(x, y), c(x_type, y_type))$transform(cbind(x, y), c(x_type, y_type))
+
+cond <- compute_conditionals(compute_distrbs(cbind(x, y),
+                                             c(x_type, y_type))$transform(cbind(x, y),
+                                                                          c(x_type, y_type)),
+                             mod$model)
+cond_x <- compute_conditionals(u_x, sub_mod)
+
+
+# Try for the first point ? 
+vinemat <- rvinecopulib::as_rvine_matrix(mod$model$structure)
+
+u_seq_y <- seq(0, 1, .1)
+
+bicop_2_dbicop <- function(u, cop_obj){
+  dbicop(u, cop_obj$family, cop_obj$rotation, cop_obj$parameters,
+         cop_obj$var_types)
+}
+
+u_y <- 0.1
+
+
+eval_at_u_y <- function(u_y, model, n_test, cond_x) {
+  
+  if (length(u_y) != n_test && length(u_y) == 1) {
+    u_y <- rep(u_y, n_test)
+  } else if (!(length(u_y) == n_test & lenght(unique(u_y) == 1))) {
+    stop(paste(c("u_y must be a single number between 0 ",
+                 "and 1, or a vector of n_test repetitions ",
+                 "of the same number"), collapse = ""))  
+  }
+  
+  vinemat <- rvinecopulib::as_rvine_matrix(model$structure)
+  d <- model$structure$d
+  h <- rep(0, n_test)
+  u_ <- weave_transformed(u_y,
+                          get(make_hfunc_key(vinemat[1, 1], c()),
+                              envir=cond_x))
+  h <- bicop_2_hbicop(u_, mod$model$pair_copulas[[1]][[1]])
+  
+  for (t in 2:(nrow(vinemat) - 1)){
+    u_ <- weave_transformed(
+      h, get(make_hfunc_key(vinemat[t, 1], vinemat[1:(t-1), 1]),
+             envir=cond_x))
+    
+    h <- bicop_2_hbicop(u_, mod$model$pair_copulas[[t]][[1]])
+  }
+  h
+}
+
+
+E_y_ingr <- compute.cond.cont.y.int.approx(x = x, Matrix.xy = vinemat[rev(seq(5)), ],
+                                           pair.copulas.xy = mod$model$pair_copulas,
+                                           F.x = F.all(x, x_type)$F.x, F.all(as.matrix(y), "c"),
+                                           var.types.x = x_type, .1)
+plot(y - compute.cond.cont.y.int.approx(x = x, Matrix.xy = vinemat[rev(seq(5)), ],
+                                    pair.copulas.xy = mod$model$pair_copulas,
+                                    F.x = F.all(x, x_type)$F.x, F.all(as.matrix(y), "c"),
+                                    var.types.x = x_type, .1), ylab = "Difference")
+uu <- cbind(sapply(u_y[-length(u_y)], function(u) eval_at_u_y(u, mod$model, 506, cond_x)), rep(1, 506))
+udiff <- t(apply(uu, 1, diff))
+uu[, 2:n_points] <- udiff
+E_y_m <- uu %*%y_u
+
+
+n_points <- 10
+u_y <- seq(.1, 1, .1)
+eps <- u_y[2] - u_y[1]
+y_u <- quantile(y, probs = u_y - eps/2)
+
+
+
+par(mfrow = c(1, 2))
+plot(E_y_ingr)
+plot(E_y_m)
+mean((y - E_y_ingr)**2)
+mean((y - E_y_m)**2)
+
+F.all(as.matrix(y), "c")[[2]]
+
+F.all(x, x_type)
+length(0.1) != 506 && length(unique(0.1)) == 1
+
+n_points <- 10
+u_y <- seq(0, 1, length.out = n_points + 1)[2:(n_points + 1)]
+eps <- u_y[2] - u_y[1]
+y_u <- quantile(y, probs = u_y - eps/2)
+uu <- cbind(sapply(u_y[-length(u_y)], function(u) eval_at_u_y(u, mod$model, 506, cond_x)), rep(1, 506))
+udiff <- t(apply(uu, 1, diff))
+uu[, 2:n_points] <- udiff
+plot(y - uu %*% y_u, ylab="Difference")
+sum((uu%*%y_u - y)**2)
+
+length(get(make_hfunc_key(1, c()), cond_x))
+vinemat
+
+n_ <- 506
+u_ <- weave_transformed(rep(0.1, n_),
+                        get(make_hfunc_key(vinemat[1, 1], c()),
+                            cond_x))
+vinemat
+d_1 <- bicop_2_dbicop(u_, mod$model$pair_copulas[[1]][[1]])
+h_1 <- bicop_2_hbicop(u_, mod$model$pair_copulas[[1]][[1]],
+                      return_u_minus = F)
+u_2 <- weave_transformed(h_1, get(make_hfunc_key(vinemat[2, 1], vinemat[1, 1]),
+                                  envir=cond_x))
+d_2 <- bicop_2_dbicop(u_2, mod$model$pair_copulas[[2]][[1]])
+h_2 <- bicop_2_hbicop(u_2, mod$model$pair_copulas[[2]][[1]])
+u_3 <- weave_transformed(h_2, get(make_hfunc_key(vinemat[3, 1], vinemat[1:2, 1]),
+                                  envir=cond_x))
+d_3 <- bicop_2_dbicop(u_3, mod$model$pair_copulas[[3]][[1]])
+h_3 <- bicop_2_hbicop(u_3, mod$model$pair_copulas[[3]][[1]])
+u_4 <- weave_transformed(h_3, get(make_hfunc_key(vinemat[4, 1], vinemat[1:3, 1]),
+                                  envir=cond_x))
+
+d_4 <- bicop_2_dbicop(u_4, mod$model$pair_copulas[[4]][[1]])
+
+plot(d_1*d_2*d_3*d_4)
+
+
+
+#####
+
+d <- ncol(x)
+n <- nrow(x)
+delta <- .1
+u <- seq(delta, 1, delta)
+
+u.x.tmp <- compute.cond.y.prep.int(x, vinemat[rev(seq(d + 1)), ], mod$model$pair_copulas,
+                                   F.all(x, x_type)$F.x, x_type)
+y.u <- quantile(F.all(as.matrix(y), "c")$F.x[[1]], probs=u-0.5*delta)
+
+var.types.x <- x_type
+
+
+u.y.tmp <- compute.u.y(rep(u[-length(u)], each=nrow(u.x.tmp)),
+                       matrix(rep(t(u.x.tmp), length(u)-1),
+                              ncol=ncol(u.x.tmp), byrow=TRUE),
+                       vinemat[rev(seq(d + 1)), ], mod$model$pair_copulas, x_type)[,d]
+
+p.y.cond.tmp <- matrix(h.func(u.y.tmp,rep(u.x.tmp[,2*d-1], length(u)-1), 2,
+                              pair.copulas.xy[[d]][[1]]$family,
+                              pair.copulas.xy[[d]][[1]]$rotation,
+                              pair.copulas.xy[[d]][[1]]$par,
+                              var.type=var.types.x[Matrix.xy[2,1]],
+                              u.minus=rep(u.x.tmp[,2*d], length(u)-1)),
+                       nrow=n)
+
+p.y.cond.tmp <- cbind(p.y.cond.tmp, rep(1, n))
+p.y.cond <- p.y.cond.tmp
+p.y.cond[,2:length(u)] <- t(apply(p.y.cond.tmp, 1, diff))
+E.y.cond <- apply(t(t(p.y.cond)*y.u), 1, sum)
+
+E.y.cond
