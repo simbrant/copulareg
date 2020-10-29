@@ -30,9 +30,9 @@ copulareg.default <- function(y, x, var_type_y, var_type_x,
 
 }
 
-predict.copulareg <- function(copulareg_object, newdata = NULL) {
+predict.copulareg <- function(copulareg_object, newdata = NULL, eps=1E-3) {
 
-  .compute_expectation(copulareg_object, newdata)
+  .compute_expectation(copulareg_object, newdata, eps)
 
 }
 
