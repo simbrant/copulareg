@@ -1,6 +1,4 @@
 
-
-
 copulareg <- function(y, x, var_type_y, var_type_x, ...) {
   UseMethod("copulareg")
 }
@@ -14,12 +12,19 @@ copulareg <- function(y, x, var_type_y, var_type_x, ...) {
 
 
 copulareg.default <- function(y, x, var_type_y, var_type_x,
-                        family_set = c("gaussian", "clayton", "gumbel"),
-                        extra_x = NULL){
+                              family_set = c("gaussian", "clayton", "gumbel"),
+                              extra_x = NULL, extra_y=NULL){
 
-  if(!is.null(extra_x)){
+  if(!is.null(extra_x) & !is.null(extra_y)){
     fit <- .fit_model_xy(y, x, var_type_y, var_type_x, family_set,
-                  .compute_distrbs(rbind(x, extra_x), x_type))
+                         .compute_distrbs(rbind(x, extra_x), var_type_x),
+                         .compute_distrbs(c(y, extra_y), var_type_y))
+  } else if (!is.null(extra_x) & is.null(extra_y)){
+    fit <- .fit_model_xy(y, x, var_type_y, var_type_x, family_set,
+                         .compute_distrbs(rbind(x, extra_x), var_type_x))
+  } else if (is.null(extra_x) & !is.null(extra_y)){
+    fit <- .fit_model_xy(y, x, var_type_y, var_type_x, family_set,
+                         .compute_distrbs(c(y, extra_y), var_type_y))
   } else {
     fit <- .fit_model_xy(y, x, var_type_y, var_type_x, family_set)
   }
@@ -27,25 +32,27 @@ copulareg.default <- function(y, x, var_type_y, var_type_x,
   class(fit) <- "copulareg"
 
   fit
-
 }
 
-predict.copulareg <- function(copulareg_object, newdata = NULL, eps=1E-3) {
+predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
 
-  .compute_expectation(copulareg_object, newdata, eps)
+  .compute_expectation(copulareg_object, newdata, ...)
 
 }
 
 .fit_model_xy <- function(y, x, var_type_y, var_types_x,
-                         family_set=c("gaussian", "clayton", "gumbel"),
-                         distr_x=NULL) {
+                          family_set=c("gaussian", "clayton", "gumbel"),
+                          distr_x=NULL, distr_y=NULL) {
   # Fit a pair copula model, by first fitting a model to the p-dimensional X,
   # and then augmenting this with the variable y.
 
   if (is.null(distr_x)) {
     distr_x <- .compute_distrbs(x, var_types_x)
   }
-  distr_y <- .compute_distrbs(y, var_type_y)
+
+  if (is.null(distr_y)){
+    distr_y <- .compute_distrbs(y, var_type_y)
+  }
 
   model_x <- .fit_model_x(x, distr_x, var_types_x, family_set = family_set)
 
@@ -228,7 +235,7 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, eps=1E-3) {
                     function(j) model_xy$pair_copulas[[t]][[j]]$npars))))
 
   list(model = model_xy, conditionals = conditionals, distr_x=distr_x,
-       distr_y=distr_y, y=switch (var_type_y, c = NULL, d = sort(unique(y))))
+       distr_y=distr_y, y=y)
 
 }
 
@@ -370,7 +377,7 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, eps=1E-3) {
   paste0(c("(", i, "| ",
            paste0(c(sapply(cond_set[-length(cond_set)],
                            function(cond_var) paste0(c(cond_var, ", "),
-                                              collapse = "")),
+                                                     collapse = "")),
                     cond_set[length(cond_set)]),
                   collapse = ""),
            ")"), collapse = "")
@@ -464,8 +471,8 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, eps=1E-3) {
 
       assign(key2,
              .bicop_2_hbicop(u_i_t,
-                              model$pair_copulas[[t]][[e]], cond_var = 1,
-                              return_u_minus = model$var[vinemat[t, e]] == "d"),
+                             model$pair_copulas[[t]][[e]], cond_var = 1,
+                             return_u_minus = model$var[vinemat[t, e]] == "d"),
              envir = transformed_variables)
     }
   }
