@@ -1,6 +1,5 @@
 
 
-
 .compute_expectation <- function(fit, new_x = NULL, eps = 1E-2, cont_method="Ingrid") {
 
   eval_at_u_y <- function(u_y, model, n_test, cond_x, y_type) {
@@ -79,6 +78,7 @@
           2:length(qy1),
           function(j) mean(fit$y[fit$y >= qy1[j-1] & fit$y < qy1[j]])
         )
+
         m_[is.na(m_)] <- qy2[is.na(m_)]
 
         # The local mean within each subinterval
