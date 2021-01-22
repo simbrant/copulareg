@@ -1,6 +1,24 @@
 
 
-.compute_expectation <- function(fit, new_x = NULL, eps = 1E-2, cont_method="Ingrid") {
+predict.copulareg.default <- function(fit, new_x = NULL, eps = 1E-2, cont_method="Localmedian") {
+  ##' predict.copulareg
+  ##' @aliases predict.copulareg
+  ##' @description Computes predictions based on a fitted copulareg model.
+  ##' @param fit Model fit as returned by copulareg
+  ##' @param new_x optional matrix of covariate values to compute the predicted
+  ##' values of the outcome for. If not specified, the predicted values for the
+  ##' training sample is returned.
+  ##' @param eps Interval between each interpolation point when integrating to
+  ##' evaluate the predicted value of y, in the case where y is continuous. If
+  ##' y is discrete this parameter is ignored.
+  ##' @param cont_method Specifies the method used to compute the expected
+  ##' values. Can be specified as 'Localmedian' or 'Trapezoidalsurv'. The
+  ##' first method divides the range of the observed values of y into
+  ##' subintervals according to the argument 'eps', where the sub-integral
+  ##' is approximated as the measure of the interval weighted by the local
+  ##' median on the interval. The second method computes the integral by
+  ##' integrating the survival function using the trapezoidal rule, by
+  ##' transforming the outcome into a positive variable by adding a constant.
 
   eval_at_u_y <- function(u_y, model, n_test, cond_x, y_type) {
 
@@ -59,35 +77,17 @@
     # Continuous case #
     ###################
 
-    if (!(cont_method %in% c("Ingrid", "Trapezoidalsurv", "Ingrid_mod"))){
-      stop(paste0(c("Argument cont_method must be either 'Ingrid',",
-                    " 'Ingrid_mod', or 'Trapezoidalsurv'!"),
+    if (!(cont_method %in% c("Localmedian", "Trapezoidalsurv"))){
+      stop(paste0(c("Argument cont_method must be either 'Localmedian' or",
+                    " 'Trapezoidalsurv'!"),
                   collapse = ""))
     }
 
-    if (cont_method == "Ingrid" || cont_method == "Ingrid_mod"){
-      # Make a grid to integrate y on (on the distribution scale)
+    if (cont_method == "Localmedian"){
       u_y <- seq(eps, 1, eps)
 
-      if (cont_method == "Ingrid_mod"){
-
-        qy1 <- quantile(fit$y, probs = c(0, u_y))
-        qy2 <- quantile(fit$y, probs = u_y - eps/2)
-
-        m_ <- sapply(
-          2:length(qy1),
-          function(j) mean(fit$y[fit$y >= qy1[j-1] & fit$y < qy1[j]])
-        )
-
-        m_[is.na(m_)] <- qy2[is.na(m_)]
-
-        # The local mean within each subinterval
-        y_u <- m_
-
-      } else {
       # The local median within each subinterval
-        y_u <- quantile(fit$distr_y$margins[[1]], probs = u_y - eps/2)
-      }
+      y_u <- quantile(fit$distr_y$margins[[1]], probs = u_y - eps/2)
 
       # Compute the integral, compute the conditional CDF at the right endpoints
       # of the intervals corresponding to each evaluation point first (the last
@@ -104,7 +104,6 @@
       uu %*%y_u
 
     } else {
-
       u_y <- seq(0, 1, eps)
 
       # Inverse CDF of Y at evaluation points
@@ -119,6 +118,7 @@
           sapply(1:(length(u_y) - 1),
                  function(j) (surv[, j] + surv[, j+1])/2)
         %*% (y_u[-1] - y_u[-length(y_u)]))
+
     }
   } else {
 

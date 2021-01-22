@@ -16,6 +16,25 @@ copulareg <- function(y, x, var_type_y, var_type_x, ...) {
 copulareg.default <- function(y, x, var_type_y, var_type_x,
                         family_set = c("gaussian", "clayton", "gumbel"),
                         extra_x = NULL, extra_y=NULL){
+  ##' copulareg
+  ##' @aliases copulareg
+  ##' @description This function fits joint distributions with an R-vine
+  ##' pair copula structure, that is constructed in a specific way so that
+  ##' the conditional density and distribution of the variable y can be
+  ##' computed explicitly.
+  ##' @param y A vector of n observations of the (univariate) outcome variable y
+  ##' @param x A (n x p) matrix of n observations of p covariates
+  ##' @param var_type_y A character that has to be specified as "d" or "c"
+  ##' to indicate whether y is discrete or continuous, respectively.
+  ##' @param var_type_x A vector of p characters that have to take the value
+  ##' "c" or "d" to indicate whether each margin of the covariates is discrete
+  ##' or continuous.
+  ##' @param family_set A vector of strings that specifies the set of pair-copula
+  ##' families that the fitting algorithm chooses from. For a overview of which
+  ##' values that can be specified, see the documentation for \link[rvinecopulib]{bicop}.
+  ##' @param extra_x Optional extra values of x to use for estimating the margins
+  ##' of the covariates.
+  ##' @param extra_y Optional extra values of y to use to estimate the margin of y.
 
   if(!is.null(extra_x) & !is.null(extra_y)){
     fit <- .fit_model_xy(y, x, var_type_y, var_type_x, family_set,
@@ -38,7 +57,7 @@ copulareg.default <- function(y, x, var_type_y, var_type_x,
 
 predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
 
-  .compute_expectation(copulareg_object, newdata, ...)
+  predict.copulareg.default(copulareg_object, newdata, ...)
 
 }
 
@@ -80,7 +99,7 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
     seq(ncol(rvine_mat) - 1)
   } else {
 
-    # Todo: This will always be false, so I should really
+    # Todo: This will always be false, so I should perhaps
     # rewrite the code below.
     if (!flipped_mat) {
       rvine_mat <- rvine_mat[seq(nrow(rvine_mat), 1), ]
@@ -292,6 +311,7 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
   }
 
   list(margins = margins, transform = transform)
+
 }
 
 
