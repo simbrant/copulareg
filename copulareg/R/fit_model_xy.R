@@ -196,7 +196,9 @@ copulareg.default <- function(y, x, var_type_y, var_type_x,
       # conditional Kendall's tau with the response.
       u_x <- sapply(valid, function(j) .get_hfunc(j, cond_set, conditionals))
       u_y <- .get_hfunc(p + 1, cond_set, conditionals)
-      new_mat[t, 1] <- valid[which.max(abs(cor(u_y, u_x, method = "kendall")))]
+      new_mat[t, 1] <- valid[which.max(abs(
+        stats::cor(u_y, u_x, method = "kendall")
+        ))]
     }
 
     # Combine the two variables that the new pair copula will be fit to.
@@ -281,9 +283,9 @@ copulareg.default <- function(y, x, var_type_y, var_type_x,
     if (n < 1)
       stop("'x' must have 1 or more non-missing values")
     vals <- unique(x)
-    rval <- approxfun(vals, cumsum(tabulate(match(x, vals))) * weight,
-                      method = "constant", yleft = 0, yright = 1, f = 0,
-                      ties = "ordered")
+    rval <- stats::approxfun(vals, cumsum(tabulate(match(x, vals))) * weight,
+                             method = "constant", yleft = 0, yright = 1, f = 0,
+                             ties = "ordered")
     class(rval) <- c("ecdf", "stepfun", class(rval))
     assign("nobs", n, envir = environment(rval))
     attr(rval, "call") <- sys.call()

@@ -27,14 +27,16 @@ to indicate whether y is discrete or continuous, respectively.}
 "c" or "d" to indicate whether each margin of the covariates is discrete
 or continuous.}
 
-\item{family_set}{A vector of strings that specifies the set of pair-copula
-families that the fitting algorithm chooses from. For a overview of which
-values that can be specified, see the documentation for \link[rvinecopulib]{bicop}.}
+\item{family_set}{A vector of strings that specifies the set of
+pair-copula families that the fitting algorithm chooses from. For an
+overview of which values that can be specified, see the documentation for
+\link[rvinecopulib]{bicop}.}
 
-\item{extra_x}{Optional extra values of x to use for estimating the margins
-of the covariates.}
+\item{extra_x}{Optional extra values of x to use for estimating the
+margins of the covariates.}
 
-\item{extra_y}{Optional extra values of y to use to estimate the margin of y.}
+\item{extra_y}{Optional extra values of y to use to estimate the margin
+of y.}
 }
 \description{
 This function fits joint distributions with an R-vine

@@ -1,10 +1,8 @@
 Package: copulareg
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Copula regression
 Version: 0.1.0
-Authors@R: c(
-    person("Simon Boge", "Brant", email = "simonbb@math.uio.no", role = "cre"),
-    person("Ingrid", "Hobæk Haff", role = "aut"))
+Author: Simon Boge Brant, Ingrid Hobæk Haff
 Maintainer: Simon Boge Brant <simonbb@math.uio.no>
 Description: Copula regression
     This package implements an algorithm for fitting multivariate models
@@ -16,4 +14,4 @@ License: MIT | file LICENCE
 Imports: rvinecopulib (>= 0.5.4.1.0)
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0

@@ -1,11 +1,11 @@
 
-predict <- function(copulareg_object, newdata = NULL, ...) {
-
-  predict.default(copulareg_object, newdata, ...)
-
+predict <- function(fit, new_x = NULL, ...) {
+  UseMethod("predict")
 }
 
-
+predict <- function(fit, new_x = NULL, ...) {
+  predict.default(fit, new_x, ...)
+}
 
 predict.default <- function(fit, new_x = NULL, eps = 1E-2,
                                       cont_method="Localmedian") {
@@ -98,7 +98,7 @@ predict.default <- function(fit, new_x = NULL, eps = 1E-2,
       u_y <- seq(eps, 1, eps)
 
       # The local median within each subinterval
-      y_u <- quantile(fit$distr_y$margins[[1]], probs = u_y - eps / 2)
+      y_u <- stats::quantile(fit$distr_y$margins[[1]], probs = u_y - eps / 2)
 
       # Compute the integral, compute the conditional CDF at the right endpoints
       # of the intervals corresponding to each evaluation point first (the last
@@ -120,14 +120,14 @@ predict.default <- function(fit, new_x = NULL, eps = 1E-2,
       u_y <- seq(0, 1, eps)
 
       # Inverse CDF of Y at evaluation points
-      y_u <- quantile(fit$distr_y$margins[[1]], probs = u_y)
+      y_u <- stats::quantile(fit$distr_y$margins[[1]], probs = u_y)
 
       # Compute the conditional survival function at each evaluation point
       surv <- sapply(u_y, function(u) 1 - eval_at_u_y(rep(u, n_obs),
                                                       fit$model, n_obs,
                                                       cond_x, y_type))
 
-      (quantile(y_u, 0) +
+      (stats::quantile(y_u, 0) +
           sapply(1:(length(u_y) - 1),
                  function(j) (surv[, j] + surv[, j + 1]) / 2)
         %*% (y_u[-1] - y_u[-length(y_u)]))
