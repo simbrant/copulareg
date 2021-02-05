@@ -15,7 +15,7 @@ copulareg <- function(y, x, var_type_y, var_type_x, ...) {
 
 copulareg.default <- function(y, x, var_type_y, var_type_x,
                         family_set = c("gaussian", "clayton", "gumbel"),
-                        extra_x = NULL, extra_y=NULL){
+                        extra_x = NULL, extra_y=NULL) {
   ##' copulareg
   ##' @aliases copulareg
   ##' @description This function fits joint distributions with an R-vine
@@ -29,21 +29,23 @@ copulareg.default <- function(y, x, var_type_y, var_type_x,
   ##' @param var_type_x A vector of p characters that have to take the value
   ##' "c" or "d" to indicate whether each margin of the covariates is discrete
   ##' or continuous.
-  ##' @param family_set A vector of strings that specifies the set of pair-copula
-  ##' families that the fitting algorithm chooses from. For a overview of which
-  ##' values that can be specified, see the documentation for \link[rvinecopulib]{bicop}.
-  ##' @param extra_x Optional extra values of x to use for estimating the margins
-  ##' of the covariates.
-  ##' @param extra_y Optional extra values of y to use to estimate the margin of y.
+  ##' @param family_set A vector of strings that specifies the set of
+  ##' pair-copula families that the fitting algorithm chooses from. For an
+  ##' overview of which values that can be specified, see the documentation for
+  ##' \link[rvinecopulib]{bicop}.
+  ##' @param extra_x Optional extra values of x to use for estimating the
+  ##' margins of the covariates.
+  ##' @param extra_y Optional extra values of y to use to estimate the margin
+  ##' of y.
 
-  if(!is.null(extra_x) & !is.null(extra_y)){
+  if (!is.null(extra_x) & !is.null(extra_y)) {
     fit <- .fit_model_xy(y, x, var_type_y, var_type_x, family_set,
                          .compute_distrbs(rbind(x, extra_x), var_type_x),
                          .compute_distrbs(c(y, extra_y), var_type_y))
-  } else if (!is.null(extra_x) & is.null(extra_y)){
+  } else if (!is.null(extra_x) & is.null(extra_y)) {
     fit <- .fit_model_xy(y, x, var_type_y, var_type_x, family_set,
                          .compute_distrbs(rbind(x, extra_x), var_type_x))
-  } else if (is.null(extra_x) & !is.null(extra_y)){
+  } else if (is.null(extra_x) & !is.null(extra_y)) {
     fit <- .fit_model_xy(y, x, var_type_y, var_type_x, family_set,
                          .compute_distrbs(c(y, extra_y), var_type_y))
   } else {
@@ -53,12 +55,6 @@ copulareg.default <- function(y, x, var_type_y, var_type_x,
   class(fit) <- "copulareg"
 
   fit
-}
-
-predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
-
-  predict.copulareg.default(copulareg_object, newdata, ...)
-
 }
 
 .fit_model_xy <- function(y, x, var_type_y, var_types_x,
@@ -71,7 +67,7 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
     distr_x <- .compute_distrbs(x, var_types_x)
   }
 
-  if (is.null(distr_y)){
+  if (is.null(distr_y)) {
     distr_y <- .compute_distrbs(y, var_type_y)
   }
 
@@ -255,8 +251,8 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
              sapply(1:(model_xy$structure$d - t),
                     function(j) model_xy$pair_copulas[[t]][[j]]$npars))))
 
-  list(model = model_xy, conditionals = conditionals, distr_x=distr_x,
-       distr_y=distr_y, y=y)
+  list(model = model_xy, conditionals = conditionals, distr_x = distr_x,
+       distr_y = distr_y, y = y)
 
 }
 
@@ -274,19 +270,20 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
     x <- as.matrix(x)
   }
 
-  ecdf_np1 <- function (x, x_type) {
+  ecdf_np1 <- function(x, x_type) {
     #
     # copy of stats::ecdf, but with a different
     # dividing constant: (1/n) is replaced by (1/(n+1)), if x is continuous
     #
     x <- sort(x)
     n <- length(x)
-    weight <- switch(x_type, c = 1/(n + 1), d = 1/n)
+    weight <- switch(x_type, c = 1 / (n + 1), d = 1 / n)
     if (n < 1)
       stop("'x' must have 1 or more non-missing values")
     vals <- unique(x)
-    rval <- approxfun(vals, cumsum(tabulate(match(x, vals)))*weight,
-                      method = "constant", yleft = 0, yright = 1, f = 0, ties = "ordered")
+    rval <- approxfun(vals, cumsum(tabulate(match(x, vals))) * weight,
+                      method = "constant", yleft = 0, yright = 1, f = 0,
+                      ties = "ordered")
     class(rval) <- c("ecdf", "stepfun", class(rval))
     assign("nobs", n, envir = environment(rval))
     attr(rval, "call") <- sys.call()
@@ -352,19 +349,19 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
 
     # This is more complicated. There are four_cases.
 
-    u_columns_1 <- switch (1 + 2*(cond_var - 1) + 1*(ncol(u) == 4),
-                           c(1, 2, 1, 3),
-                           c(1, 2, 3, 4),
-                           c(1, 2, 3, 2),
-                           c(1, 2, 3, 4))
+    u_columns_1 <- switch(1 + 2 * (cond_var - 1) + 1 * (ncol(u) == 4),
+                          c(1, 2, 1, 3),
+                          c(1, 2, 3, 4),
+                          c(1, 2, 3, 2),
+                          c(1, 2, 3, 4))
 
     if (return_u_minus) {
 
-      u_columns_2 <- switch (1 + 2*(cond_var - 1) + 1*(ncol(u) == 4),
-                             c(1, 3, 1, 3),
-                             c(1, 4, 3, 4),
-                             c(3, 2, 3, 2),
-                             c(3, 2, 3, 4))
+      u_columns_2 <- switch(1 + 2 * (cond_var - 1) + 1 * (ncol(u) == 4),
+                            c(1, 3, 1, 3),
+                            c(1, 4, 3, 4),
+                            c(3, 2, 3, 2),
+                            c(3, 2, 3, 4))
 
       cbind(rvinecopulib::hbicop(u[, u_columns_1], cond_var = cond_var,
                                  family = bicop_obj$family,
@@ -467,7 +464,8 @@ predict.copulareg <- function(copulareg_object, newdata = NULL, ...) {
         u_i_t <- .weave_transformed(get(.make_hfunc_key(vinemat[d + 1 - e, e],
                                                         cond_set),
                                         envir = transformed_variables),
-                                    get(.make_hfunc_key(vinemat[t, e], cond_set),
+                                    get(.make_hfunc_key(vinemat[t, e],
+                                                        cond_set),
                                         envir = transformed_variables))
 
         key1 <- .make_hfunc_key(vinemat[d + 1 - e, e],
