@@ -1,0 +1,1 @@
+devtools::document("~/Work/gitrepos/copulareg/copulareg")
